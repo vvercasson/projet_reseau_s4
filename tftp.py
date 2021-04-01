@@ -20,7 +20,7 @@ def runServer(addr, timeout, thread):
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.bind(addr)
     while True:
-        data,addresse = s.recvfrom(1500)
+        data,adresse = s.recvfrom(1500)
 
         data1 = data[0:2]
         data2 = data[2:]
@@ -33,7 +33,7 @@ def runServer(addr, timeout, thread):
 
         sServeur = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # creation d'un socket de reponse
         sServeur.bind("localhost",33425)
-        sServeur.sendto(b'\x00\x04\x00\x00',addresse) # ACK de reponse
+        sServeur.sendto(b'\x00\x04\x00\x00',adresse) # ACK de reponse
 
         # Requete RRQ
         if opcode == 1:
