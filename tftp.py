@@ -43,7 +43,7 @@ def runServer(addr, timeout, thread):
             sServeur.sento(b'\x00\x03\x00\x01'+message,adresse)
         # Requete WRQ
         if opcode == 2:
-            dataWRQ,adresseWRQ = sServeur.recvfrom(1500)
+            print(sServeur.recvfrom(1500)[0])
 
             #condition data bien recu
             sServeur.sendto(b'\x00\x04\x00\x01',adresse) # ACK de réponse DAT1
@@ -80,10 +80,10 @@ def put(addr, filename, targetname, blksize, timeout):
         # read from file and send data
         pakcet = file.read(blksize)
         encodedPakcet = pakcet.encode()
-        s.sendto(encodedPakcet,addr)
+        s.sendto(encodedPakcet,serverAddr)
 
         # receive confirmation
-        data, serverAddr = s.recvfrom(1500)
+        print(s.recvfrom(1500)[0])
 
     s.close()
 
