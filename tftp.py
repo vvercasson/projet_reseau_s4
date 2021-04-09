@@ -4,13 +4,27 @@ TFTP Module.
 
 import socket
 import sys
+import random
 
 ########################################################################
 #                          COMMON ROUTINES                             #
 ########################################################################
 
-# todo
+def isPortAvailable(port):
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        s.connect(('',port))
+        s.close()
+        return True
+    except:
+        return False
 
+def getRandPort():
+    while True:
+        randomPort = random.randint(10000,30000)
+        if isPortAvailable(randomPort):
+            return randomPort
+    
 ########################################################################
 #                             SERVER SIDE                              #
 ########################################################################
@@ -19,41 +33,72 @@ import sys
 def runServer(addr, timeout, thread):
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.bind(addr)
-    cmpt = 0 # compteur des data
     while True:
+        print(getRandPort())
         data,adresse = s.recvfrom(1500)
-
+        # Treating the request from the client
         data1 = data[0:2]
         data2 = data[2:]
-
+        cmpt = 1 # compteur des data
         opcode = int.from_bytes(data1, byteorder='big') # opcode pour la requete
 
-        args = data2.split(b'\x00')                      
-        filename = args[0].decode('ascii') 
-        mode = args[1].decode('ascii') 
+        args = data2.split(b'\x00')
+        filename = args[0].decode('ascii')
+        mode = args[1].decode('ascii')
 
+        # Opening the new socket for the transfer
         sServeur = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # creation d'un socket de reponse
-        sServeur.bind(('',33425))
-        sServeur.sendto(b'\x00\x04\x00\x0'+cmpt,adresse) # ACK de reponse WRQ
+        newAvailablePort = getRandPort()
+        sServeur.bind(('',newAvailablePort))
+        sServeur.settimeout(timeout)
 
-        # Requete RRQ
+        # RRQ -> READ REQUEST (Server sends data to client)
         if opcode == 1:
+            print("[myclient:"+str(adresse[1])+" -> "+"myserver:"+str(addr[1])+"] RRQ="+str(data)) # data du client
             blkSize = args[3].decode('ascii') # decoupage du message
+            print(blkSize)
             while True:
                 #ouverture du fichier envoyé
                 file = open(filename,'r')
-                message = file.read(blkSize) # on lit 
+                message = file.read(int(blkSize)) # on lit 
                 if len(message) == 0:
                     break
-                cmpt=+1
-                sServeur.sento(b'\x00\x03\x00\x0'+cmpt+message,adresse)
-        # Requete WRQ
+                cmpt+=1
+                msg = b'\x00\x03\x00'
+                msg =+ b'\x00'
+                msg[:-1] += cmpt
+                print(msg)
+                sServeur.sento(msg+message,adresse)
+        # WRQ -> WRITE REQUEST (Client sends data to server)
         if opcode == 2:
+            firstACK = b'\x00\x04\x00\x00'
+            sServeur.sendto(firstACK,adresse) # ACK answer to the WRQ
+            print("[myclient:"+str(adresse[1])+" -> "+"myserver:"+str(addr[1])+"] WRQ="+str(data))
+            print("[myserver:"+str(newAvailablePort)+" -> "+"myclient:"+str(adresse[1])+"] ACK0="+str(firstACK))
+
+
+            file = open('fichier.txt','w') # Opening the file to write in 
+
             while True:
-                dataWRQ = sServeur.recvfrom(1500)
-                if len(dataWRQ[0]) == 0:
+                # Receiving data
+                try:
+                    dataWRQ = sServeur.recvfrom(1500)
+                except socket.timeout:
                     break
-                sServeur.sendto(b'\x00\x04\x00\x0'+cmpt,adresse) # ACK de réponse DAT1
+                # print(dataWRQ[0].decode())
+                
+                # Writing data in file
+                file.write(dataWRQ[0].decode())
+
+                msg = b'\x00\x03\x00'
+                cmptAsByte = cmpt.to_bytes(1, 'big')
+                msg += cmptAsByte
+                print("[myclient:"+str(adresse[1])+" -> "+"myserver:"+str(newAvailablePort)+"] DAT"+str(cmpt)+"="+str(dataWRQ[0]))
+                print("[myserver:"+str(33425)+" -> "+"myclient:"+str(adresse[1])+"] ACK"+str(cmpt)+"="+str(msg))
+                sServeur.sendto(msg,adresse)
+                cmpt += 1
+                
+            file.close()
 
 ########################################################################
 #                             CLIENT SIDE                              #
@@ -76,10 +121,7 @@ def put(addr, filename, targetname, blksize, timeout):
     s.sendto(frameWRQ,addr)
 
     # Opening the file to send
-    if targetname != filename:
-        file = open(targetname,'r')
-    else:
-        file = open(filename,'r')
+    file = open(filename,'r')
 
     # receive first ACK
     data, serverAddr = s.recvfrom(blksize)
@@ -89,11 +131,15 @@ def put(addr, filename, targetname, blksize, timeout):
         if len(pakcet) == 0:
             break
         encodedPakcet = pakcet.encode()
-        s.sendto(encodedPakcet,serverAddr)
+        msgToSend = b'\x00\x03\x00'
+        cmptByte = dataCnt.to_bytes(1, 'big')
+        msgToSend += cmptByte
+        msgToSend += encodedPakcet
+
+        s.sendto(msgToSend,serverAddr)
 
         # receive confirmation
         print(s.recvfrom(1500)[0])
-
     s.close()
 
 ########################################################################
@@ -111,24 +157,16 @@ def get(addr, filename, targetname, blksize, timeout):
     # Initializing and sending the write request
     frameRRQ = b'\x00\x01' + filename.encode() + b'\x00octet\x00'
     if blksize != 512:
-        frameWRQ += b'blksize\x00' + str(blksize).encode() + b'\x00'
-    s.sendto(frameWRQ,addr)
+        frameRRQ += b'blksize\x00' + str(blksize).encode() + b'\x00'
+    s.sendto(frameRRQ,addr)
 
-    # Opening the file to send
-    file = open(filename,'r')
-    if targetname != filename:
-        file = open(targetname,'r')
+    # Opening the file to write in
+    file = open(targetname,'w')
     
-    # receive first ACK
-    data, serverAddr = s.recvfrom(blksize)
     while True:
-        # read from file and send data
-        pakcet = file.read(blksize)
-        encodedPakcet = pakcet.encode()
-        s.sendto(encodedPakcet,addr)
-
-        # receive confirmation
+        # receive data
         data, serverAddr = s.recvfrom(1500)
+        file.write(data[3:3+blksize].decode())
 
     s.close()
 
