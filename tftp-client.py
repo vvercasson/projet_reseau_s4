@@ -24,21 +24,17 @@ parser.add_argument('targetname', type=str, nargs='?', default='')
 args = parser.parse_args()
 
 # change target filename
-if args.targetname == '':
-    args.targetname = args.filename
+if args.targetname == '': args.targetname = args.filename
 
 # change current working directory
-if args.cwd != '':
-    os.chdir(args.cwd)
+if args.cwd != '': os.chdir(args.cwd)
 
 # get request
 if(args.cmd == 'get'):
-    tftp.get((args.host, args.port), args.filename,
-             args.targetname, args.blksize, args.timeout)
+    tftp.get((args.host, args.port), args.filename, args.targetname, args.blksize, args.timeout)
 
 # put request
 if(args.cmd == 'put'):
-    tftp.put((args.host, args.port), args.filename,
-             args.targetname, args.blksize, args.timeout)
+    tftp.put((args.host, args.port), args.filename, args.targetname, args.blksize, args.timeout)
 
 # EOF
