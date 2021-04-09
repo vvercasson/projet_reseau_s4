@@ -86,6 +86,8 @@ def put(addr, filename, targetname, blksize, timeout):
     while True:
         # read from file and send data
         pakcet = file.read(blksize)
+        if len(pakcet) == 0:
+            break
         encodedPakcet = pakcet.encode()
         s.sendto(encodedPakcet,serverAddr)
 
