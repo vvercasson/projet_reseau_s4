@@ -25,20 +25,28 @@ def runServer(addr, timeout, thread):
         data1 = data[0:2]
         data2 = data[2:]
 
-        opcode = int.from_bytes(frame1, byteorder='big') # opcode pour la requete
+        opcode = int.from_bytes(data1, byteorder='big') # opcode pour la requete
 
-        args = frame2.split(b'\x00')                      
+        args = data2.split(b'\x00')                      
         filename = args[0].decode('ascii') 
         mode = args[1].decode('ascii') 
 
         sServeur = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # creation d'un socket de reponse
         sServeur.bind("localhost",33425)
-        sServeur.sendto(b'\x00\x04\x00\x00',adresse) # ACK de reponse
+        sServeur.sendto(b'\x00\x04\x00\x00') # ACK de reponse WRQ
 
         # Requete RRQ
         if opcode == 1:
-            sServeur.sento(b'\x00\x03\x00\x01',adresse)
+            #ouverture du fichier envoyé
+            file = open(filename,'r')
+            message = file.readlines()
+            sServeur.sento(b'\x00\x03\x00\x01',message)
         # Requete WRQ
+        if opcode == 2:
+            dataWRQ,adresseWRQ = sServeur.recvfrom(1500)
+
+            #condition data bien recu
+            sServeur.sendto(b'\x00\x04\x00\x01') # ACK de réponse DAT1
 
 ########################################################################
 #                             CLIENT SIDE                              #
