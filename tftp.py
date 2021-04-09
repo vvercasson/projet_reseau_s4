@@ -19,6 +19,7 @@ import sys
 def runServer(addr, timeout, thread):
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.bind(addr)
+    cmpt = 0 # compteur des data
     while True:
         data,adresse = s.recvfrom(1500)
 
@@ -33,20 +34,26 @@ def runServer(addr, timeout, thread):
 
         sServeur = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # creation d'un socket de reponse
         sServeur.bind(('',33425))
-        sServeur.sendto(b'\x00\x04\x00\x00',adresse) # ACK de reponse WRQ
+        sServeur.sendto(b'\x00\x04\x00\x0'+cmpt,adresse) # ACK de reponse WRQ
 
         # Requete RRQ
         if opcode == 1:
-            #ouverture du fichier envoyé
-            file = open(filename,'r')
-            message = file.readlines()
-            sServeur.sento(b'\x00\x03\x00\x01'+message,adresse)
+            blkSize = args[3].decode('ascii') # decoupage du message
+            while True:
+                #ouverture du fichier envoyé
+                file = open(filename,'r')
+                message = file.read(blkSize) # on lit 
+                if len(message) == 0:
+                    break
+                cmpt=+1
+                sServeur.sento(b'\x00\x03\x00\x0'+cmpt+message,adresse)
         # Requete WRQ
         if opcode == 2:
-            print(sServeur.recvfrom(1500)[0])
-
-            #condition data bien recu
-            sServeur.sendto(b'\x00\x04\x00\x01',adresse) # ACK de réponse DAT1
+            while True:
+                dataWRQ = sServeur.recvfrom(1500)
+                if len(dataWRQ[0]) == 0:
+                    break
+                sServeur.sendto(b'\x00\x04\x00\x0'+cmpt,adresse) # ACK de réponse DAT1
 
 ########################################################################
 #                             CLIENT SIDE                              #
