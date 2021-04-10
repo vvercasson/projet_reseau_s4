@@ -34,7 +34,7 @@ def runServer(addr, timeout, thread):
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.bind(addr)
     while True:
-        print(getRandPort())
+        print("[port]",getRandPort())
         data,adresse = s.recvfrom(1500)
         # Treating the request from the client
         data1 = data[0:2]
@@ -55,20 +55,31 @@ def runServer(addr, timeout, thread):
         # RRQ -> READ REQUEST (Server sends data to client)
         if opcode == 1:
             print("[myclient:"+str(adresse[1])+" -> "+"myserver:"+str(addr[1])+"] RRQ="+str(data)) # data du client
-            blkSize = args[3].decode('ascii') # decoupage du message
-            print(blkSize)
+
+            file = open('exemple.txt','r')
             while True:
-                #ouverture du fichier envoyé
-                file = open(filename,'r')
-                message = file.read(int(blkSize)) # on lit 
-                if len(message) == 0:
+                if args[2].decode('ascii') == 'blksize':
+                    blkSize = args[3].decode('ascii') # decoupage du message
+                    message = file.read(int(blkSize)) # on lit
+                else:
+                    message = file.read()
+                if len(message) == 0: # la fin du fichier
                     break
-                cmpt+=1
                 msg = b'\x00\x03\x00'
-                msg =+ b'\x00'
-                msg[:-1] += cmpt
-                print(msg)
-                sServeur.sento(msg+message,adresse)
+                cmptAsByte = cmpt.to_bytes(1, 'big')
+                msg += cmptAsByte
+                requete = msg+message.encode() # message en byte
+
+                print("[myserver:"+str(newAvailablePort)+" -> "+"myclient:"+str(adresse[1])+"] DAT"+str(cmpt)+"="+str(requete)) # [myserver:port -> myclient:port] DATcmpt=b'\x00\x03\x00\x0cmpt+message'
+                print("[myclient:"+str(adresse[1])+" -> "+"myserver:"+str(33425)+"] ACK"+str(cmpt)+"="+str(msg)) #reponse ACK
+
+                sServeur.sendto(requete,adresse) # envoie de la requete
+
+                cmpt+=1 # compteur des données
+                
+            file.close()
+
+
         # WRQ -> WRITE REQUEST (Client sends data to server)
         if opcode == 2:
             firstACK = b'\x00\x04\x00\x00'
@@ -159,7 +170,6 @@ def get(addr, filename, targetname, blksize, timeout):
     if blksize != 512:
         frameRRQ += b'blksize\x00' + str(blksize).encode() + b'\x00'
     s.sendto(frameRRQ,addr)
-
     # Opening the file to write in
     file = open(targetname,'w')
     
