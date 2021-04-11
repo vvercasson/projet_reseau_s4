@@ -54,28 +54,37 @@ def runServer(addr, timeout, thread):
 
         # RRQ -> READ REQUEST (Server sends data to client)
         if opcode == 1:
+            # Log
             print("[myclient:"+str(adresse[1])+" -> "+"myserver:"+str(addr[1])+"] RRQ="+str(data)) # data du client
 
             file = open('exemple.txt','r')
+
+            # reading the file
             while True:
                 if args[2].decode('ascii') == 'blksize':
                     blkSize = args[3].decode('ascii') # decoupage du message
                     message = file.read(int(blkSize)) # on lit
                 else:
                     message = file.read()
-                if len(message) == 0: # la fin du fichier
+
+                # EOF ?
+                if len(message) == 0: 
                     break
+
+                # Create DAT packet
                 msg = b'\x00\x03\x00'
                 cmptAsByte = cmpt.to_bytes(1, 'big')
                 msg += cmptAsByte
-                requete = msg+message.encode() # message en byte
+                requete = msg+message.encode()
 
+                # Logs
                 print("[myserver:"+str(newAvailablePort)+" -> "+"myclient:"+str(adresse[1])+"] DAT"+str(cmpt)+"="+str(requete)) # [myserver:port -> myclient:port] DATcmpt=b'\x00\x03\x00\x0cmpt+message'
                 print("[myclient:"+str(adresse[1])+" -> "+"myserver:"+str(33425)+"] ACK"+str(cmpt)+"="+str(msg)) #reponse ACK
 
-                sServeur.sendto(requete,adresse) # envoie de la requete
+                # Sending
+                sServeur.sendto(requete,adresse)
 
-                cmpt+=1 # compteur des données
+                cmpt+=1 # increment amount of data sent
                 
             file.close()
 
@@ -171,13 +180,16 @@ def get(addr, filename, targetname, blksize, timeout):
         frameRRQ += b'blksize\x00' + str(blksize).encode() + b'\x00'
     s.sendto(frameRRQ,addr)
     # Opening the file to write in
-    file = open(targetname,'w')
+    # file = open(targetname,'w')
+    file = open("temp.txt",'w')
     
     while True:
         # receive data
-        data, serverAddr = s.recvfrom(1500)
-        file.write(data[3:3+blksize].decode())
-
+        try:
+            data, serverAddr = s.recvfrom(1500)
+        except socket.timeout:
+            break
+        file.write(data[4:3+blksize+1].decode()) # Should check 
     s.close()
 
 # EOF
