@@ -57,7 +57,7 @@ def runServer(addr, timeout, thread):
             # Log
             print("[myclient:"+str(adresse[1])+" -> "+"myserver:"+str(addr[1])+"] RRQ="+str(data)) # data du client
 
-            file = open('exemple.txt','r')
+            file = open(filename,'rb') # ecriture en bit
 
             # reading the file
             while True:
@@ -75,7 +75,7 @@ def runServer(addr, timeout, thread):
                 msg = b'\x00\x03\x00'
                 cmptAsByte = cmpt.to_bytes(1, 'big')
                 msg += cmptAsByte
-                requete = msg+message.encode()
+                requete = msg+message
 
                 # Logs
                 print("[myserver:"+str(newAvailablePort)+" -> "+"myclient:"+str(adresse[1])+"] DAT"+str(cmpt)+"="+str(requete)) # [myserver:port -> myclient:port] DATcmpt=b'\x00\x03\x00\x0cmpt+message'
@@ -108,7 +108,7 @@ def runServer(addr, timeout, thread):
                 # print(dataWRQ[0].decode())
                 
                 # Writing data in file
-                file.write(dataWRQ[0].decode())
+                file.write(dataWRQ[0][4:].decode())
 
                 msg = b'\x00\x03\x00'
                 cmptAsByte = cmpt.to_bytes(1, 'big')
