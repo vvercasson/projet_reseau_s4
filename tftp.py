@@ -68,7 +68,9 @@ def runServer(addr, timeout, thread):
                     message = file.read()
 
                 # EOF ?
-                if len(message) == 0: 
+                if len(message) == 0:
+                    messageFin = b'Fin'
+                    sServeur.sento(messageFin,adresse) 
                     break
 
                 # Create DAT packet
@@ -103,6 +105,12 @@ def runServer(addr, timeout, thread):
                 # Receiving data
                 try:
                     dataWRQ = sServeur.recvfrom(1500)
+
+                    if dataWRQ[0][4:] == b'\x00':
+                        print("J'ai fini")
+                        break
+
+
                 except socket.timeout:
                     break
                 # print(dataWRQ[0].decode())
@@ -110,8 +118,8 @@ def runServer(addr, timeout, thread):
                 # Writing data in file
                 file.write(dataWRQ[0][4:])
 
-                msg = b'\x00\x03\x00'
-                cmptAsByte = cmpt.to_bytes(1, 'big')
+                msg = b'\x00\x04\x00'
+                cmptAsByte = cmpt.to_bytes  (1, 'big')
                 msg += cmptAsByte
                 print("[myclient:"+str(adresse[1])+" -> "+"myserver:"+str(newAvailablePort)+"] DAT"+str(cmpt)+"="+str(dataWRQ[0]))
                 print("[myserver:"+str(33425)+" -> "+"myclient:"+str(adresse[1])+"] ACK"+str(cmpt)+"="+str(msg))
@@ -181,11 +189,20 @@ def get(addr, filename, targetname, blksize, timeout):
     # Opening the file to write in
     # file = open(targetname,'w')
     file = open("temp.txt",'wb')
+    messageACK = b'\x00\x04\x00'
+
     
     while True:
         # receive data
         try:
             data, serverAddr = s.recvfrom(1500)
+
+            cmptByte = dataCnt.to_bytes(1, 'big')
+            messageACK += cmptByte
+            dataCnt += 1
+
+            s.sendto(messageACK,serverAddr)
+            
         except socket.timeout:
             break
         file.write(data[4:3+blksize+1]) # Should check 
