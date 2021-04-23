@@ -97,7 +97,7 @@ def runServer(addr, timeout, thread):
             print("[myserver:"+str(newAvailablePort)+" -> "+"myclient:"+str(adresse[1])+"] ACK0="+str(firstACK))
 
 
-            file = open('fichier.txt','w') # Opening the file to write in 
+            file = open(filename,'wb') # Opening the file to write in 
 
             while True:
                 # Receiving data
@@ -108,7 +108,7 @@ def runServer(addr, timeout, thread):
                 # print(dataWRQ[0].decode())
                 
                 # Writing data in file
-                file.write(dataWRQ[0][4:].decode())
+                file.write(dataWRQ[0][4:])
 
                 msg = b'\x00\x03\x00'
                 cmptAsByte = cmpt.to_bytes(1, 'big')
@@ -141,7 +141,7 @@ def put(addr, filename, targetname, blksize, timeout):
     s.sendto(frameWRQ,addr)
 
     # Opening the file to send
-    file = open(filename,'r')
+    file = open(filename,'rb')
 
     # receive first ACK
     data, serverAddr = s.recvfrom(blksize)
@@ -150,11 +150,10 @@ def put(addr, filename, targetname, blksize, timeout):
         pakcet = file.read(blksize)
         if len(pakcet) == 0:
             break
-        encodedPakcet = pakcet.encode()
         msgToSend = b'\x00\x03\x00'
         cmptByte = dataCnt.to_bytes(1, 'big')
         msgToSend += cmptByte
-        msgToSend += encodedPakcet
+        msgToSend += pakcet
 
         s.sendto(msgToSend,serverAddr)
 
@@ -181,7 +180,7 @@ def get(addr, filename, targetname, blksize, timeout):
     s.sendto(frameRRQ,addr)
     # Opening the file to write in
     # file = open(targetname,'w')
-    file = open("temp.txt",'w')
+    file = open("temp.txt",'wb')
     
     while True:
         # receive data
@@ -189,7 +188,7 @@ def get(addr, filename, targetname, blksize, timeout):
             data, serverAddr = s.recvfrom(1500)
         except socket.timeout:
             break
-        file.write(data[4:3+blksize+1].decode()) # Should check 
+        file.write(data[4:3+blksize+1]) # Should check 
     s.close()
 
 # EOF
