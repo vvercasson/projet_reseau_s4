@@ -70,7 +70,7 @@ def runServer(addr, timeout, thread):
                 # EOF ?
                 if len(message) == 0:
                     messageFin = b'Fin'
-                    sServeur.sento(messageFin,adresse) 
+                    sServeur.sendto(messageFin,adresse) 
                     break
 
                 # Create DAT packet
@@ -188,7 +188,7 @@ def get(addr, filename, targetname, blksize, timeout):
     s.sendto(frameRRQ,addr)
     # Opening the file to write in
     # file = open(targetname,'w')
-    file = open("temp.txt",'wb')
+    file = open(targetname,'wb')
     messageACK = b'\x00\x04\x00'
 
     
