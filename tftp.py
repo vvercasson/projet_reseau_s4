@@ -65,7 +65,7 @@ def runServer(addr, timeout, thread):
                     blkSize = args[3].decode('ascii') # decoupage du message
                     message = file.read(int(blkSize)) # on lit
                 else:
-                    message = file.read()
+                    message = file.read(512)
 
                 # EOF ?
                 if len(message) == 0:
@@ -205,7 +205,7 @@ def get(addr, filename, targetname, blksize, timeout):
             
         except socket.timeout:
             break
-        file.write(data[4:3+blksize+1]) # Should check 
+        file.write(data[4:]) # Should check 
     s.close()
 
 # EOF
