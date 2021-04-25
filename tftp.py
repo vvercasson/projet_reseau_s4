@@ -66,16 +66,21 @@ def runServer(addr, timeout, thread):
 
             # reading the file
             while True:
+                end = False
                 if args[2].decode('ascii') == 'blksize':
                     blkSize = args[3].decode('ascii')  # decoupage du message
                     message = file.read(int(blkSize))  # on lit
+                    if len(message) != int(blkSize):
+                        end = True
                 else:
                     message = file.read(512)
+                    if len(message) != 512:
+                        end = True
 
                 # EOF ?
                 if len(message) == 0:
-                    messageFin = b'Fin'
-                    sServeur.sendto(messageFin, adresse)
+                    #messageFin = b'Fin'
+                    #sServeur.sendto(messageFin, adresse)
                     break
 
                 # Create DAT packet
@@ -95,12 +100,18 @@ def runServer(addr, timeout, thread):
                 sServeur.sendto(requete, adresse)
 
                 cmpt += 1  # increment amount of data sent
+                if end == True:
+                    break
 
             file.close()
 
         # WRQ -> WRITE REQUEST (Client sends data to server)
         if opcode == 2:
             firstACK = b'\x00\x04\x00\x00'
+            if args[2].decode('ascii') == 'blksize':
+                blkSize = args[3].decode('ascii')  # decoupage du message
+            else:
+                blkSize = 512
             sServeur.sendto(firstACK, adresse)  # ACK answer to the WRQ
             print("[myclient:"+str(adresse[1])+" -> " +
                   "myserver:"+str(addr[1])+"] WRQ="+str(data))
@@ -113,11 +124,6 @@ def runServer(addr, timeout, thread):
                 # Receiving data
                 try:
                     dataWRQ = sServeur.recvfrom(1500)
-
-                    if dataWRQ[0][4:] == b'\x00':
-                        print("J'ai fini")
-                        break
-
                 except socket.timeout:
                     break
                 # print(dataWRQ[0].decode())
@@ -133,6 +139,8 @@ def runServer(addr, timeout, thread):
                 print("[myserver:"+str(33425)+" -> "+"myclient:" +
                       str(adresse[1])+"] ACK"+str(cmpt)+"="+str(msg))
                 sServeur.sendto(msg, adresse)
+                if len(dataWRQ[0][4:]) != blkSize:
+                    break
                 cmpt += 1
 
             file.close()
@@ -208,12 +216,15 @@ def get(addr, filename, targetname, blksize, timeout):
             cmptByte = dataCnt.to_bytes(1, 'big')
             messageACK += cmptByte
             dataCnt += 1
+            print(b"ACK envoye : " + messageACK)
 
             s.sendto(messageACK, serverAddr)
 
         except socket.timeout:
             break
         file.write(data[4:])  # Should check
+        if len(data[4:]) != blksize:
+            break
     s.close()
 
 # EOF
