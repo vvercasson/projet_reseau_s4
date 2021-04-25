@@ -36,7 +36,6 @@ def runServer(addr, timeout, thread):
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.bind(addr)
     while True:
-        print("[port]", getRandPort())
         data, adresse = s.recvfrom(1500)
         # Treating the request from the client
         data1 = data[0:2]
@@ -62,7 +61,7 @@ def runServer(addr, timeout, thread):
             print("[myclient:"+str(adresse[1])+" -> "+"myserver:" +
                   str(addr[1])+"] RRQ="+str(data))  # data du client
 
-            file = open(filename, 'rb')  # ecriture en bit
+            file = open(filename, 'rb')  # lecture en bit
 
             # reading the file
             while True:
@@ -78,26 +77,30 @@ def runServer(addr, timeout, thread):
                         end = True
 
                 # EOF ?
-                if len(message) == 0:
-                    #messageFin = b'Fin'
-                    #sServeur.sendto(messageFin, adresse)
-                    break
+                # if len(message) == 0:
+                #     break
 
                 # Create DAT packet
                 msg = b'\x00\x03\x00'
                 cmptAsByte = cmpt.to_bytes(1, 'big')
                 msg += cmptAsByte
                 requete = msg+message
+                # print(b"SEND DATA : " + requete)
 
                 # Logs
                 # [myserver:port -> myclient:port] DATcmpt=b'\x00\x03\x00\x0cmpt+message'
                 print("[myserver:"+str(newAvailablePort)+" -> "+"myclient:" +
                       str(adresse[1])+"] DAT"+str(cmpt)+"="+str(requete))
-                print("[myclient:"+str(adresse[1])+" -> "+"myserver:" +
-                      str(33425)+"] ACK"+str(cmpt)+"="+str(msg))  # reponse ACK
+                
 
                 # Sending
                 sServeur.sendto(requete, adresse)
+
+                # Receive ACK
+                messageACK, _ = sServeur.recvfrom(1500)
+                # print(b"LALALALA : " + messageACK)
+                print("[myclient:"+str(adresse[1])+" -> "+"myserver:" +
+                      str(newAvailablePort)+"] ACK"+str(cmpt)+"="+str(messageACK))  # reponse ACK
 
                 cmpt += 1  # increment amount of data sent
                 if end == True:
@@ -169,8 +172,12 @@ def put(addr, filename, targetname, blksize, timeout):
     file = open(filename, 'rb')
 
     # receive first ACK
-    data, serverAddr = s.recvfrom(blksize)
+    # messageACK, serverAddr = s.recvfrom(1500)
     while True:
+        # Receive ACKs
+        messageACK, serverAddr = s.recvfrom(1500)
+        print(b"MESSAGE ACK RECU : "+messageACK)
+
         # read from file and send data
         pakcet = file.read(blksize)
         if len(pakcet) == 0:
@@ -179,11 +186,13 @@ def put(addr, filename, targetname, blksize, timeout):
         cmptByte = dataCnt.to_bytes(1, 'big')
         msgToSend += cmptByte
         msgToSend += pakcet
+        dataCnt += 1
+        print(b"MESSAGE SENT : " + msgToSend)
 
         s.sendto(msgToSend, serverAddr)
 
         # receive confirmation
-        print(s.recvfrom(1500)[0])
+        
     s.close()
 
 ########################################################################
@@ -206,23 +215,25 @@ def get(addr, filename, targetname, blksize, timeout):
     # Opening the file to write in
     # file = open(targetname,'w')
     file = open(targetname, 'wb')
-    messageACK = b'\x00\x04\x00'
+    
 
     while True:
         # receive data
         try:
             data, serverAddr = s.recvfrom(1500)
-
+            messageACK = b'\x00\x04\x00'
             cmptByte = dataCnt.to_bytes(1, 'big')
             messageACK += cmptByte
             dataCnt += 1
-            print(b"ACK envoye : " + messageACK)
+            # print(b"ACK envoye : " + messageACK)
 
             s.sendto(messageACK, serverAddr)
 
         except socket.timeout:
             break
         file.write(data[4:])  # Should check
+        print(b'received message : ' + data)
+        print(b'written part :' + data[4:])
         if len(data[4:]) != blksize:
             break
     s.close()
