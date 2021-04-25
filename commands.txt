@@ -1,0 +1,8 @@
+Launch server :
+./tftp-server.py -c ./serveur
+
+Put client:
+./tftp-client.py -c ./client put localhost FILE
+
+Get client:
+./tftp-client.py -c ./client get localhost FILE
